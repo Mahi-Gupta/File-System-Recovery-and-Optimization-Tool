@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File System Recovery & Optimization Tool</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 3fr;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .sidebar {
+            background-color: #252525;
+            padding: 20px;
+            border-radius: 8px;
+            height: fit-content;
+        }
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .card {
+            background-color: #252525;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        h1, h2 {
+            margin: 0 0 10px;
+            color: #4CAF50;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #bbb;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            background-color: #333;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            border-radius: 4px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 0;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #canvas {
+            background-color: #333;
+            border-radius: 4px;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .metric-card {
+            text-align: center;
+            padding: 10px;
+            background-color: #333;
+            border-radius: 4px;
+        }
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            background-color: #4CAF50;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        .tooltip {
+            position: relative;
+        }
+        .tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            background-color: #444;
+            padding: 5px;
+            border-radius: 4px;
+            color: #e0e0e0;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+        }
+        #progress {
+            width: 100%;
+            height: 10px;
+            background-color: #444;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        #progress-bar {
+            height: 100%;
+            background-color: #4CAF50;
+            width: 0;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 8px;
+            border: 1px solid #444;
+            text-align: left;
+        }
+        th {
+            background-color: #333;
+            color: #4CAF50;
+        }
+        .file-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .file-item {
+            padding: 8px;
+            border-bottom: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+        }
+        .file-item:hover {
+            background-color: #333;
+        }
+        .file-icon {
+            margin-right: 10px;
+            color: #4CAF50;
+        }
+        .file-actions button {
+            padding: 2px 8px;
+            margin-left: 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h2>Controls</h2>
+            <div class="input-group">
+                <label>Operation Mode</label>
+                <select id="operationMode">
+                    <option value="recovery">File Recovery</option>
+                    <option value="optimization">Optimization</option>
+                    <option value="analysis">System Analysis</option>
+                </select>
+            </div>
+            
+            <div id="recovery-options">
+                <div class="input-group">
+                    <label>File System Type</label>
+                    <select id="filesystemType">
+                        <option value="ntfs">NTFS</option>
+                        <option value="ext4">ext4</option>
+                        <option value="fat32">FAT32</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Scan Depth</label>
+                    <select id="scanDepth">
+                        <option value="quick">Quick Scan</option>
+                        <option value="deep">Deep Scan</option>
+                        <option value="signature">Signature Scan</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div id="optimization-options" style="display:none;">
+                <div class="input-group">
+                    <label>Optimization Type</label>
+                    <select id="optimizationType">
+                        <option value="defrag">Defragmentation</option>
+                        <option value="cleanup">Disk Cleanup</option>
+                        <option value="placement">File Placement</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Target Drive</label>
+                    <select id="targetDrive">
+                        <option value="C">C:</option>
+                        <option value="D">D:</option>
+                        <option value="E">E:</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button onclick="startOperation()">Start Operation</button>
+            <button onclick="pauseOperation()">Pause</button>
+            <button onclick="stopOperation()">Stop</button>
+            
+            <div id="progress"><div id="progress-bar"></div></div>
+            
+            <div class="input-group">
+                <label>File Filter</label>
+                <input type="text" id="fileFilter" placeholder="e.g., *.docx, *.jpg">
+            </div>
+            
+            <button onclick="saveReport()">Save Report</button>
+            <button onclick="loadSettings()">Load Settings</button>
+            <button onclick="showHelp()">Help</button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Dashboard -->
+            <div class="card">
+                <h1>File System Dashboard</h1>
+                <p>Current Operation: <span id="currentOp">None</span><span class="status-indicator"></span></p>
+                <div class="metrics-grid">
+                    <div class="metric-card tooltip" data-tooltip="Space that can be recovered or optimized">
+                        <h3>Recoverable Space</h3>
+                        <p id="recoverableSpace">0 MB</p>
+                    </div>
+                    <div class="metric-card tooltip" data-tooltip="Files that can be recovered">
+                        <h3>Recoverable Files</h3>
+                        <p id="recoverableFiles">0</p>
+                    </div>
+                    <div class="metric-card tooltip" data-tooltip="Estimated performance improvement">
+                        <h3>Performance Gain</h3>
+                        <p id="performanceGain">0%</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File List -->
+            <div class="card">
+                <h2>Detected Files</h2>
+                <div class="file-list" id="fileList">
+                    <!-- Files will be listed here -->
+                </div>
+            </div>
+
+            <!-- Visualization -->
+            <div class="card">
+                <h2>Disk Map Visualization</h2>
+                <canvas id="canvas" width="800" height="300"></canvas>
+            </div>
+
+            <!-- System Analysis -->
+            <div class="card">
+                <h2>System Analysis</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Value</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="analysisTable">
+                        <tr>
+                            <td>Fragmentation Level</td>
+                            <td id="fragLevel">0%</td>
+                            <td id="fragStatus">-</td>
+                        </tr>
+                        <tr>
+                            <td>Free Space</td>
+                            <td id="freeSpace">0 GB</td>
+                            <td id="freeStatus">-</td>
+                        </tr>
+                        <tr>
+                            <td>Disk Health</td>
+                            <td id="diskHealth">-</td>
+                            <td id="healthStatus">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample data for demonstration
+        const sampleFiles = [
+            { name: "document.docx", size: "2.5 MB", type: "docx", recoverable: true },
+            { name: "presentation.pptx", size: "5.1 MB", type: "pptx", recoverable: true },
+            { name: "image.jpg", size: "3.2 MB", type: "jpg", recoverable: true },
+            { name: "archive.zip", size: "150 MB", type: "zip", recoverable: false },
+            { name: "config.ini", size: "12 KB", type: "ini", recoverable: true },
+            { name: "report.pdf", size: "1.8 MB", type: "pdf", recoverable: true },
+            { name: "video.mp4", size: "450 MB", type: "mp4", recoverable: false }
+        ];
+
+        let operationRunning = false;
+        let operationPaused = false;
+        let currentOperation = null;
+        
+        // Update UI when operation mode changes
+        document.getElementById('operationMode').addEventListener('change', function() {
+            const mode = this.value;
+            document.getElementById('recovery-options').style.display = 
+                mode === 'recovery' ? 'block' : 'none';
+            document.getElementById('optimization-options').style.display = 
+                mode === 'optimization' ? 'block' : 'none';
+        });
+        
+        function startOperation() {
+            if (operationRunning) return;
+            
+            operationRunning = true;
+            operationPaused = false;
+            const mode = document.getElementById('operationMode').value;
+            currentOperation = mode;
+            document.getElementById('currentOp').textContent = 
+                mode.charAt(0).toUpperCase() + mode.slice(1);
+            
+            // Simulate operation progress
+            simulateOperation();
+            
+            // Display sample files
+            displayFiles(sampleFiles.filter(file => file.recoverable));
+            
+            // Update analysis metrics
+            updateAnalysisMetrics();
+        }
+        
+        function pauseOperation() {
+            if (!operationRunning) return;
+            operationPaused = true;
+        }
+        
+        function stopOperation() {
+            operationRunning = false;
+            operationPaused = false;
+            document.getElementById('progress-bar').style.width = '0%';
+            document.getElementById('currentOp').textContent = 'None';
+        }
+        
+        function simulateOperation() {
+            if (!operationRunning || operationPaused) return;
+            
+            let progress = parseInt(document.getElementById('progress-bar').style.width) || 0;
+            if (progress >= 100) {
+                operationRunning = false;
+                return;
+            }
+            
+            progress += 2;
+            document.getElementById('progress-bar').style.width = progress + '%';
+            
+            // Update metrics during operation
+            if (currentOperation === 'recovery') {
+                document.getElementById('recoverableFiles').textContent = 
+                    Math.min(progress * 2, sampleFiles.filter(f => f.recoverable).length);
+                document.getElementById('recoverableSpace').textContent = 
+                    Math.min(progress * 5, 100) + ' MB';
+            } else if (currentOperation === 'optimization') {
+                document.getElementById('performanceGain').textContent = 
+                    Math.min(progress, 100) + '%';
+            }
+            
+            setTimeout(simulateOperation, 200);
+        }
+        
+        function displayFiles(files) {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+            
+            files.forEach(file => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                
+                fileItem.innerHTML = `
+                    <div>
+                        <span class="file-icon">📄</span>
+                        <span>${file.name}</span>
+                    </div>
+                    <div>
+                        <span style="margin-right: 15px;">${file.size}</span>
+                        <span class="file-actions">
+                            <button onclick="recoverFile('${file.name}')">Recover</button>
+                            <button onclick="previewFile('${file.name}')">Preview</button>
+                        </span>
+                    </div>
+                `;
+                
+                fileList.appendChild(fileItem);
+            });
+        }
+        
+        function recoverFile(filename) {
+            alert(`Recovering file: ${filename}`);
+            // In a real app, this would trigger the recovery process
+        }
+        
+        function previewFile(filename) {
+            alert(`Previewing file: ${filename}\n(Simulated preview in a real application)`);
+        }
+        
+        function updateAnalysisMetrics() {
+            // Simulated metrics
+            document.getElementById('fragLevel').textContent = '27%';
+            document.getElementById('fragStatus').textContent = 'Moderate';
+            document.getElementById('fragStatus').style.color = '#FFA500';
+            
+            document.getElementById('freeSpace').textContent = '45.2 GB';
+            document.getElementById('freeStatus').textContent = 'Good';
+            document.getElementById('freeStatus').style.color = '#4CAF50';
+            
+            document.getElementById('diskHealth').textContent = '92%';
+            document.getElementById('healthStatus').textContent = 'Excellent';
+            document.getElementById('healthStatus').style.color = '#4CAF50';
+            
+            // Draw disk map visualization
+            drawDiskMap();
+        }
+        
+        function drawDiskMap() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            // Draw disk sectors
+            const sectors = 50;
+            const sectorWidth = width / sectors;
+            
+            for (let i = 0; i < sectors; i++) {
+                // Simulate different types of sectors
+                const r = Math.random();
+                if (r < 0.1) {
+                    ctx.fillStyle = '#4CAF50'; // Free space
+                } else if (r < 0.3) {
+                    ctx.fillStyle = '#FF5722'; // Fragmented
+                } else if (r < 0.4) {
+                    ctx.fillStyle = '#F44336'; // Bad sectors
+                } else {
+                    ctx.fillStyle = '#2196F3'; // Used space
+                }
+                
+                ctx.fillRect(i * sectorWidth, 0, sectorWidth - 2, height);
+            }
+            
+            // Add legend
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '12px Arial';
+            ctx.fillText('Legend:', 10, 20);
+            
+            ctx.fillStyle = '#2196F3';
+            ctx.fillRect(60, 10, 15, 10);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText('Used', 80, 20);
+            
+            ctx.fillStyle = '#FF5722';
+            ctx.fillRect(130, 10, 15, 10);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText('Fragmented', 150, 20);
+            
+            ctx.fillStyle = '#4CAF50';
+            ctx.fillRect(230, 10, 15, 10);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText('Free', 250, 20);
+            
+            ctx.fillStyle = '#F44336';
+            ctx.fillRect(290, 10, 15, 10);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText('Bad', 310, 20);
+        }
+        
+        function saveReport() {
+            alert('Report saved (simulated in this demo)');
+        }
+        
+        function loadSettings() {
+            alert('Settings loaded (simulated in this demo)');
+        }
+        
+        function showHelp() {
+            alert('File System Recovery & Optimization Tool Help:\n\n' +
+                  '1. Select operation mode (Recovery/Optimization/Analysis)\n' +
+                  '2. Configure options for the selected mode\n' +
+                  '3. Click Start to begin the operation\n' +
+                  '4. View results in the dashboard and file list');
+        }
+        
+        // Initialize
+        drawDiskMap();
+    </script>
+</body>
+</html>
